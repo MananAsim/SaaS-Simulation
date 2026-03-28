@@ -4,11 +4,13 @@ import { useTicketStore } from '@/store/useTicketStore';
 import { useToastStore } from '@/components/ToastProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BrainCircuit, Send, AlertTriangle, User, Bot, ShieldAlert, Lock, Zap,
+  BrainCircuit, Send, AlertTriangle, User, Bot, ShieldAlert, Lock, Zap, Sparkles, RefreshCw, X,
 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useCollisionDetection } from '@/hooks/useCollisionDetection';
+import { useSession } from 'next-auth/react';
 
 const MACROS = [
   {
@@ -26,20 +28,25 @@ const MACROS = [
 ];
 
 export function TicketCenter() {
-  const { tickets, activeTicketId, addReply } = useTicketStore();
+  const { tickets, activeTicketId, addReply, collisionViewers } = useTicketStore();
   const { addToast } = useToastStore();
+  const { data: session } = useSession();
   const ticket = tickets.find((t) => t.id === activeTicketId);
+
+  // Collision detection: report who is viewing this ticket
+  useCollisionDetection(activeTicketId);
 
   const [replyText, setReplyText] = useState('');
   const [replyMode, setReplyMode] = useState<'Open' | 'Pending Customer' | 'Resolved'>('Open');
   const [noteType, setNoteType] = useState<'public' | 'internal'>('public');
   const [showMacros, setShowMacros] = useState(false);
+  const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setReplyText(val);
-    // Trigger macro popover if last character is /
     if (val.endsWith('/')) {
       setShowMacros(true);
     } else {
@@ -48,7 +55,6 @@ export function TicketCenter() {
   }, []);
 
   const insertMacro = (text: string) => {
-    // Replace trailing slash with the macro text
     setReplyText((prev) => prev.slice(0, prev.lastIndexOf('/')) + text);
     setShowMacros(false);
     textareaRef.current?.focus();
@@ -65,6 +71,7 @@ export function TicketCenter() {
     );
     setReplyText('');
     setReplyMode('Open');
+    setCopilotDraft(null);
     if (isNote) {
       addToast('Internal note added — hidden from customer.', 'info');
     } else if (replyMode === 'Resolved') {
@@ -76,11 +83,54 @@ export function TicketCenter() {
     }
   };
 
+  const handleGenerateDraft = async () => {
+    if (!ticket) return;
+    setIsGenerating(true);
+    setCopilotDraft(null);
+    try {
+      const res = await fetch('/api/ai/copilot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketPayload: ticket.payload,
+          customerName: ticket.customerName,
+          companyName: ticket.companyName,
+          priority: ticket.priority,
+          sentiment: ticket.aiContext?.sentiment,
+          intent: ticket.aiContext?.intent,
+          messageHistory: ticket.replies.filter(r => !r.isInternal).map(r => ({
+            sender: r.sender,
+            message: r.message,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.draft) {
+        setCopilotDraft(data.draft);
+      } else {
+        addToast('Copilot could not generate a draft. Check OpenAI config.', 'error');
+      }
+    } catch {
+      addToast('Failed to reach AI service.', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const acceptDraft = () => {
+    if (copilotDraft) {
+      setReplyText(copilotDraft);
+      setCopilotDraft(null);
+      textareaRef.current?.focus();
+    }
+  };
+
   useEffect(() => {
     setReplyText('');
     setReplyMode('Open');
     setNoteType('public');
     setShowMacros(false);
+    setCopilotDraft(null);
   }, [activeTicketId]);
 
   const getSentimentColor = (sentiment: string) => {
@@ -91,6 +141,11 @@ export function TicketCenter() {
       default: return 'text-zinc-400 bg-zinc-800 border-zinc-700';
     }
   };
+
+  // Collision: other agents viewing this ticket (exclude self)
+  const otherViewers = activeTicketId
+    ? (collisionViewers[activeTicketId] ?? []).filter(v => v.id !== session?.user?.id)
+    : [];
 
   if (!ticket) {
     return (
@@ -122,6 +177,17 @@ export function TicketCenter() {
             )}>
               {ticket.status}
             </span>
+            {/* Collision: co-agents viewing */}
+            {otherViewers.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {otherViewers.map(v => (
+                  <span key={v.id} className="flex items-center gap-1 text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    {v.name} viewing
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <p className="text-muted-foreground text-sm flex items-center gap-2">
             <User className="w-3.5 h-3.5" />
@@ -136,13 +202,13 @@ export function TicketCenter() {
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-end gap-2"
         >
-          <div className={cn('flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium', getSentimentColor(ticket.aiContext.sentiment))}>
+          <div className={cn('flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium', getSentimentColor(ticket.aiContext?.sentiment ?? 'Neutral'))}>
             <BrainCircuit className="w-3.5 h-3.5" />
-            Sentiment: {ticket.aiContext.sentiment}
+            Sentiment: {ticket.aiContext?.sentiment ?? 'Neutral'}
           </div>
           <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 bg-sidebar px-2 py-1 rounded-md border border-border">
             <Bot className="w-3 h-3" />
-            Intent: {ticket.aiContext.intent}
+            Intent: {ticket.aiContext?.intent ?? 'General'}
           </div>
         </motion.div>
       </div>
@@ -244,6 +310,35 @@ export function TicketCenter() {
             </button>
           </div>
 
+          {/* AI Copilot Draft Panel */}
+          <AnimatePresence>
+            {copilotDraft && (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                className="mb-3 p-3 rounded-xl bg-indigo-950/50 border border-indigo-500/30 text-sm text-indigo-100/90 leading-relaxed relative"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs text-indigo-400 font-medium">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    AI Copilot Draft
+                  </div>
+                  <button onClick={() => setCopilotDraft(null)} className="text-indigo-400/50 hover:text-indigo-300">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="whitespace-pre-wrap text-sm">{copilotDraft}</p>
+                <button
+                  onClick={acceptDraft}
+                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors"
+                >
+                  <Zap className="w-3 h-3" /> Accept Draft
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Textarea wrapper with macro popover */}
           <div className="relative">
             {/* Macro Popover */}
@@ -301,13 +396,26 @@ export function TicketCenter() {
                 'flex items-center justify-between p-2 pt-0 border-t',
                 isInternal ? 'border-amber-500/20 bg-amber-950/30' : 'border-border/50 bg-background/50'
               )}>
-                <button
-                  onClick={() => document.dispatchEvent(new CustomEvent('open-escalation-modal'))}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
-                >
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Escalate to Tier 3 / Jira
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => document.dispatchEvent(new CustomEvent('open-escalation-modal'))}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md transition-colors"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Escalate to Tier 3 / Jira
+                  </button>
+                  {!isInternal && (
+                    <button
+                      onClick={handleGenerateDraft}
+                      disabled={isGenerating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {isGenerating
+                        ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Generating…</>
+                        : <><Sparkles className="w-3.5 h-3.5" /> AI Draft</>}
+                    </button>
+                  )}
+                </div>
 
                 <div className="flex items-center">
                   {!isInternal && (

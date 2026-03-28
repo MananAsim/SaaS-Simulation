@@ -4,18 +4,20 @@ import { useTicketStore } from '@/store/useTicketStore';
 import { useToastStore } from '@/components/ToastProvider';
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Sparkles, RefreshCw } from 'lucide-react';
 
 export function EscalationModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const { activeTicketId, escalateTicket } = useTicketStore();
+  const { activeTicketId, tickets, escalateTicket } = useTicketStore();
   const { addToast } = useToastStore();
+  const ticket = tickets.find((t) => t.id === activeTicketId);
 
   const [form, setForm] = useState({
     technicalDescription: '',
     stepsToReproduce: '',
     businessImpact: ''
   });
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   useEffect(() => {
     const handleOpen = () => setIsOpen(true);
@@ -24,6 +26,44 @@ export function EscalationModal() {
   }, []);
 
   if (!isOpen || !activeTicketId) return null;
+
+  const handleSummarize = async () => {
+    if (!ticket) return;
+    setIsSummarizing(true);
+    try {
+      const messages = [
+        { sender: 'Customer', message: ticket.payload },
+        ...ticket.replies.map(r => ({ sender: r.isInternal ? 'Internal Note' : r.sender, message: r.message })),
+      ];
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId: ticket.id,
+          messages,
+          customerName: ticket.customerName,
+          companyName: ticket.companyName,
+        }),
+      });
+      const data = await res.json();
+      if (data.summary && Array.isArray(data.summary) && data.summary.length > 0) {
+        // Pre-fill the three fields with the AI-generated summary
+        const [point1 = '', point2 = '', point3 = ''] = data.summary;
+        setForm({
+          technicalDescription: point1,
+          stepsToReproduce: point2,
+          businessImpact: point3,
+        });
+        addToast('AI summary generated! Review and adjust before submitting.', 'info');
+      } else {
+        addToast('Could not generate summary. Add OpenAI API key to .env', 'error');
+      }
+    } catch {
+      addToast('AI service unavailable.', 'error');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +87,21 @@ export function EscalationModal() {
               <AlertTriangle className="w-5 h-5 text-red-500" />
               Escalate to Tier 3 / Jira
             </h3>
-            <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-              <X className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSummarize}
+                disabled={isSummarizing}
+                className="flex items-center gap-1.5 text-xs font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {isSummarizing
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Summarizing…</>
+                  : <><Sparkles className="w-3.5 h-3.5" /> AI Summary</>}
+              </button>
+              <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -58,7 +110,10 @@ export function EscalationModal() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Technical Description</label>
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                Technical Description
+                <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded font-medium">AI Pre-filled</span>
+              </label>
               <textarea 
                 required
                 className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground focus:ring-1 focus:ring-indigo-500 outline-none resize-none h-24"
@@ -69,7 +124,7 @@ export function EscalationModal() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Steps to Reproduce</label>
+              <label className="text-sm font-medium text-foreground">Steps to Reproduce / Prior Investigation</label>
               <textarea 
                 required
                 className="w-full bg-background border border-border rounded-lg p-3 text-sm text-foreground focus:ring-1 focus:ring-indigo-500 outline-none resize-none h-20"

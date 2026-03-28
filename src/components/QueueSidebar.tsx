@@ -4,6 +4,7 @@ import { useTicketStore, Ticket } from '@/store/useTicketStore';
 import { useToastStore } from '@/components/ToastProvider';
 import { useLiveCountdown } from '@/hooks/useLiveCountdown';
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import {
@@ -16,6 +17,8 @@ type PriorityFilter = 'All' | 'P1' | 'P2' | 'P3' | 'P4';
 export function QueueSidebar() {
   const { tickets, activeTicketId, setActiveTicket, addSimulatedTicket } = useTicketStore();
   const { addToast } = useToastStore();
+  const { data: session } = useSession();
+  const tenantId = session?.user?.tenantId ?? undefined;
   const [tab, setTab] = useState<'Open' | 'Closed'>('Open');
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('All');
@@ -34,7 +37,7 @@ export function QueueSidebar() {
     .sort((a, b) => new Date(a.slaDeadline).getTime() - new Date(b.slaDeadline).getTime());
 
   const handleSimulate = () => {
-    addSimulatedTicket();
+    addSimulatedTicket(tenantId);
     addToast('🚨 New P1 ticket arrived — NovaTech SaaS SSO failure', 'error');
   };
 

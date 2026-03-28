@@ -1,30 +1,17 @@
-'use client';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getTickets } from "./actions";
+import { DashboardClient } from "@/components/DashboardClient";
 
-import { KpiHeader } from '@/components/KpiHeader';
-import { QueueSidebar } from '@/components/QueueSidebar';
-import { TicketCenter } from '@/components/TicketCenter';
-import { TelemetrySidebar } from '@/components/TelemetrySidebar';
-import { EscalationModal } from '@/components/EscalationModal';
-import { ToastProvider } from '@/components/ToastProvider';
-import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
+export default async function Dashboard() {
+  const session = await getServerSession(authOptions);
 
-export default function Dashboard() {
-  return (
-    <div className="flex flex-col bg-background text-foreground h-screen overflow-hidden selection:bg-indigo-500/30">
-      {/* Global KPI Header with keyboard shortcuts button embedded */}
-      <KpiHeader />
+  if (!session) {
+    redirect("/login");
+  }
 
-      {/* Three-pane workspace — responsive */}
-      <div className="flex flex-1 overflow-hidden relative">
-        <QueueSidebar />
-        <TicketCenter />
-        <TelemetrySidebar />
-      </div>
+  const initialTickets = await getTickets();
 
-      {/* Global overlays */}
-      <EscalationModal />
-      <ToastProvider />
-      <KeyboardShortcutsModal />
-    </div>
-  );
+  return <DashboardClient initialTickets={initialTickets} />;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTicketStore } from '@/store/useTicketStore';
-import { TrendingUp, AlertOctagon } from 'lucide-react';
+import { TrendingUp, AlertOctagon, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 
@@ -103,8 +103,17 @@ export function KpiHeader() {
         ))}
       </div>
 
-      {/* Keyboard shortcuts button — right-aligned */}
-      <KeyboardShortcutsModal />
+      {/* Actions */}
+      <div className="flex items-center gap-2 relative">
+        <button
+          onClick={() => document.dispatchEvent(new CustomEvent('open-analytics-modal'))}
+          className="flex items-center justify-center p-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 outline-none hover:text-white transition-colors border border-border group"
+          title="Open Analytics Dashboard"
+        >
+          <BarChart3 className="w-4 h-4 text-muted-foreground group-hover:text-indigo-400 transition-colors" />
+        </button>
+        <KeyboardShortcutsModal />
+      </div>
     </div>
   );
 }
