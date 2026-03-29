@@ -1,15 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+export const dynamic = "force-dynamic";
 
-/**
- * POST /api/sdk/telemetry
- * Body: { tenantId, ticketId, browser, os, errorCode, featureFlags, customerTier, sessionReplayUrl }
- *
- * This is meant to be called by the client's frontend application (the "SDK")
- * immediately after a user submits a ticket, attaching deep context securely.
- */
+import { NextRequest, NextResponse } from 'next/server';
+
 export async function POST(req: NextRequest) {
   try {
+    const { db } = await import('@/lib/db'); // 🔥 lazy import
+
     const body = await req.json();
     const { tenantId, ticketId, browser, os, errorCode, featureFlags, customerTier } = body;
 
@@ -17,7 +13,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing credentials or ticketId' }, { status: 400 });
     }
 
-    // Upsert telemetry data for the ticket
     const telemetry = await db.telemetry.upsert({
       where: { ticketId },
       update: {

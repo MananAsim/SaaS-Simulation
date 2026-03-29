@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { addHours, addMinutes } from 'date-fns';
-
+export const dynamic = "force-dynamic";
 import { SSE_SUBSCRIBERS } from '@/lib/sse';
 
 export const runtime = 'nodejs';

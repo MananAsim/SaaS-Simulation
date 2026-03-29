@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { SSE_SUBSCRIBERS } from '@/lib/sse';
-
+export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 // In-memory viewer registry: { [ticketId]: Set<agentName> }
