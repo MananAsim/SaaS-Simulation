@@ -199,7 +199,9 @@ function TicketCard({ ticket, isActive, onClick }: { ticket: Ticket; isActive: b
 
   let timeText = '';
   if (isResolved) {
-    const lastReply = ticket.replies.length > 0 ? ticket.replies[ticket.replies.length - 1].timestamp : new Date();
+    const lastReply = (ticket.replies?.length ?? 0) > 0
+      ? ticket.replies[ticket.replies.length - 1].timestamp
+      : new Date();
     const diffMs = new Date(lastReply).getTime() - new Date(ticket.createdAt).getTime();
     const mins = Math.floor(diffMs / 60000);
     timeText = `TTR: ${mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`}`;

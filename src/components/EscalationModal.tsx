@@ -33,7 +33,7 @@ export function EscalationModal() {
     try {
       const messages = [
         { sender: 'Customer', message: ticket.payload },
-        ...ticket.replies.map(r => ({ sender: r.isInternal ? 'Internal Note' : r.sender, message: r.message })),
+        ...( ticket.replies ?? []).map(r => ({ sender: r.isInternal ? 'Internal Note' : r.sender, message: r.message })),
       ];
       const res = await fetch('/api/ai/summarize', {
         method: 'POST',

@@ -8,23 +8,28 @@ export async function getTickets() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.tenantId) return [];
 
-  const tickets = await db.ticket.findMany({
-    where: {
-      tenantId: session.user.tenantId,
-    },
-    include: {
-      telemetry: true,
-      aiContext: true,
-      messages: {
-        orderBy: { timestamp: 'asc' },
+  try {
+    const tickets = await db.ticket.findMany({
+      where: {
+        tenantId: session.user.tenantId,
       },
-    },
-    orderBy: {
-      slaDeadline: 'asc',
-    },
-  });
+      include: {
+        telemetry: true,
+        aiContext: true,
+        messages: {
+          orderBy: { timestamp: 'asc' },
+        },
+      },
+      orderBy: {
+        slaDeadline: 'asc',
+      },
+    });
 
-  return tickets;
+    return tickets ?? [];
+  } catch (err) {
+    console.error('[getTickets] DB error:', err);
+    return [];
+  }
 }
 
 export async function updateTicketStatusAction(ticketId: string, status: string) {

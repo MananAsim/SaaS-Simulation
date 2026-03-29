@@ -15,7 +15,7 @@ import { useRealtime } from '@/hooks/useRealtime';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useCollisionDetection } from '@/hooks/useCollisionDetection';
 
-export function DashboardClient({ initialTickets }: { initialTickets: any[] }) {
+export function DashboardClient({ initialTickets = [] }: { initialTickets: any[] }) {
   const { status } = useSession();
   const setTickets = useTicketStore((state) => state.setTickets);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -24,9 +24,9 @@ export function DashboardClient({ initialTickets }: { initialTickets: any[] }) {
   useRealtime();
 
   useEffect(() => {
-    if (initialTickets && initialTickets.length > 0) {
-      setTickets(initialTickets as any);
-    }
+    // Always call setTickets — even with [] — so the store is initialised
+    // and child components never map() over undefined.
+    setTickets((initialTickets ?? []) as any);
     setIsLoaded(true);
   }, [initialTickets, setTickets]);
 

@@ -98,7 +98,7 @@ export function TicketCenter() {
           priority: ticket.priority,
           sentiment: ticket.aiContext?.sentiment,
           intent: ticket.aiContext?.intent,
-          messageHistory: ticket.replies.filter(r => !r.isInternal).map(r => ({
+          messageHistory: (ticket.replies ?? []).filter(r => !r.isInternal).map(r => ({
             sender: r.sender,
             message: r.message,
           })),
@@ -233,7 +233,7 @@ export function TicketCenter() {
 
         {/* Replies */}
         <AnimatePresence initial={false}>
-          {ticket.replies.map((reply) => (
+          {(ticket.replies ?? []).map((reply) => (
             <motion.div
               key={reply.id}
               initial={{ opacity: 0, y: 10 }}

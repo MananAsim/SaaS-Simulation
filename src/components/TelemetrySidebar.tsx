@@ -34,9 +34,9 @@ export function TelemetrySidebar() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-medium">
             <Tags className="w-4 h-4" /> Feature Flags
           </div>
-          {telemetry.featureFlags.length > 0 ? (
+          {(telemetry.featureFlags ?? []).length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {telemetry.featureFlags.map(flag => (
+              {(telemetry.featureFlags ?? []).map(flag => (
                 <span key={flag} className="px-2 py-1 bg-zinc-800 border border-zinc-700 rounded-md text-xs font-mono text-zinc-300">
                   {flag}
                 </span>
