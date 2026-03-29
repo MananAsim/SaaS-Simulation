@@ -1,19 +1,15 @@
 export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import { openai } from '@/lib/openai';
 
 /**
  * POST /api/ai/copilot
- * Body: { ticketPayload, customerName, companyName, priority, messageHistory }
- * Returns: { draft: string }
- *
- * Generates a contextual, empathetic draft response for the agent using GPT-4o-mini.
- * The agent can review and edit before sending.
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+
   if (!session?.user?.tenantId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -23,9 +19,18 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-      console.log("GROQ KEY:", process.env.GROQ_API_KEY);
+    // 🔥 LAZY LOAD (THIS WAS YOUR BUG)
+    const { openai } = await import('@/lib/openai');
 
-    const { ticketPayload, customerName, companyName, priority, sentiment, intent, messageHistory = [] } = await req.json();
+    const {
+      ticketPayload,
+      customerName,
+      companyName,
+      priority,
+      sentiment,
+      intent,
+      messageHistory = [],
+    } = await req.json();
 
     const systemPrompt = `You are a senior customer support agent writing professional, empathetic email responses for SupportOS.
 Your goal is to generate a polished, complete reply to a customer's support ticket.
@@ -38,9 +43,12 @@ Follow these rules:
 - End with a clear next step
 - Do NOT use placeholders like [NAME] — use the real names provided`;
 
-    const messageHistoryText = messageHistory.length > 0
-      ? `\nPrevious conversation:\n${messageHistory.map((m: any) => `${m.sender}: ${m.message}`).join('\n\n')}`
-      : '';
+    const messageHistoryText =
+      messageHistory.length > 0
+        ? `\nPrevious conversation:\n${messageHistory
+            .map((m: any) => `${m.sender}: ${m.message}`)
+            .join('\n\n')}`
+        : '';
 
     const userPrompt = `Customer: ${customerName} at ${companyName}
 Priority: ${priority}
@@ -63,11 +71,15 @@ Write a complete support reply for the agent to send to this customer.`;
       max_tokens: 400,
     });
 
-    const draft = completion.choices[0]?.message?.content?.trim() ?? '';
+    const draft =
+      completion.choices[0]?.message?.content?.trim() ?? '';
 
     return NextResponse.json({ draft });
   } catch (err) {
     console.error('[AI_COPILOT]', err);
-    return NextResponse.json({ error: 'AI service error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'AI service error' },
+      { status: 500 }
+    );
   }
 }
