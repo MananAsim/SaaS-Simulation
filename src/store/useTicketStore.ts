@@ -152,8 +152,16 @@ export const useTicketStore = create<TicketStore>((set) => ({
           telemetry: { os: 'Ubuntu 22.04', browser: 'Chrome 123', errorCode: 'SSO_AUTH_FAILURE', featureFlags: 'okta_sso_v2', customerTier: 'Enterprise' },
           aiContext: { sentiment: 'Angry', intent: 'SSO / Auth Failure' },
         }),
-      }).catch(console.error);
-      // The SSE will dispatch addIncomingTicket, so no local state update needed
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ticket) {
+            useTicketStore.getState().addIncomingTicket(data.ticket);
+          }
+        })
+        .catch(console.error);
+      // The SSE will dispatch addIncomingTicket, but on Vercel Edge/Serverless, SSE may not broadcast properly
+      // to the same client instance. Manually triggering the state update ensures the UI updates instantly.
       return;
     }
     // Fallback (no session available): local-only optimistic insert

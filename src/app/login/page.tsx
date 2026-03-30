@@ -33,7 +33,16 @@ export default function LoginPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-lg border border-zinc-800 bg-[#121214] p-6 shadow-xl"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">SupportOS Login</h2>
+        <h2 className="text-2xl font-bold mb-2 text-center text-white tracking-tight">SupportOS Login</h2>
+        <p className="text-[13px] text-zinc-400 text-center mb-6 leading-relaxed px-2">
+          Welcome to the SupportOS Beta! We are currently in active testing. 
+          Please use the designated credentials below to log in and explore the platform.
+        </p>
+
+        <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3.5 mb-6 text-sm flex flex-col items-center gap-1">
+          <span className="text-indigo-200 font-medium">agent@supportos.demo</span>
+          <span className="text-indigo-300 font-mono text-xs">password123</span>
+        </div>
         {error && (
           <div className="mb-4 text-sm text-red-500 text-center">{error}</div>
         )}

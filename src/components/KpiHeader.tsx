@@ -1,7 +1,8 @@
 'use client';
 
 import { useTicketStore } from '@/store/useTicketStore';
-import { TrendingUp, AlertOctagon, BarChart3 } from 'lucide-react';
+import { signOut } from 'next-auth/react';
+import { TrendingUp, AlertOctagon, BarChart3, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 
@@ -104,7 +105,14 @@ export function KpiHeader() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 relative">
+      <div className="flex items-center gap-2 relative border-l border-border pl-4 ml-4">
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="flex items-center justify-center p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 outline-none transition-colors border border-red-500/20 group"
+          title="Log Out"
+        >
+          <LogOut className="w-4 h-4 text-red-500/80 group-hover:text-red-400 transition-colors" />
+        </button>
         <button
           onClick={() => document.dispatchEvent(new CustomEvent('open-analytics-modal'))}
           className="flex items-center justify-center p-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-700/50 outline-none hover:text-white transition-colors border border-border group"
