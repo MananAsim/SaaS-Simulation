@@ -179,7 +179,7 @@ export const useTicketStore = create<TicketStore>((set) => ({
 }));
 
 // Helper to normalise raw Prisma DB shape → Ticket interface
-function mapRawTicket(raw: any): Ticket {
+export function mapRawTicket(raw: any): Ticket {
   return {
     id: raw.id,
     customerName: raw.customerName,

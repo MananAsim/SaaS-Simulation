@@ -10,7 +10,7 @@ import { EscalationModal } from '@/components/EscalationModal';
 import { ToastProvider } from '@/components/ToastProvider';
 import { KeyboardShortcutsModal } from '@/components/KeyboardShortcutsModal';
 import { AnalyticsModal } from '@/components/AnalyticsModal';
-import { useTicketStore } from '@/store/useTicketStore';
+import { useTicketStore, mapRawTicket } from '@/store/useTicketStore';
 import { useRealtime } from '@/hooks/useRealtime';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useCollisionDetection } from '@/hooks/useCollisionDetection';
@@ -26,7 +26,8 @@ export function DashboardClient({ initialTickets = [] }: { initialTickets: any[]
   useEffect(() => {
     // Always call setTickets — even with [] — so the store is initialised
     // and child components never map() over undefined.
-    setTickets((initialTickets ?? []) as any);
+    const mapped = (initialTickets ?? []).map((t) => mapRawTicket(t));
+    setTickets(mapped);
     setIsLoaded(true);
   }, [initialTickets, setTickets]);
 
